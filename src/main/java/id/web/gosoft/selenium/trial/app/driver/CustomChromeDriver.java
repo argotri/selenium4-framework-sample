@@ -5,7 +5,10 @@ import net.thucydides.core.webdriver.DriverSource;
 import org.openqa.selenium.WebDriver;
 import org.openqa.selenium.chrome.ChromeDriver;
 import org.openqa.selenium.devtools.DevTools;
+import org.openqa.selenium.devtools.NetworkInterceptor;
 import org.openqa.selenium.devtools.v97.network.Network;
+import org.openqa.selenium.remote.http.Filter;
+import org.openqa.selenium.remote.http.HttpResponse;
 
 import java.util.Optional;
 
@@ -20,24 +23,14 @@ public class CustomChromeDriver implements DriverSource {
         //add listener to intercept request and continue
         chromeDevTools.send(Network.enable(Optional.empty(), Optional.empty(), Optional.empty()));
 
-        chromeDevTools.addListener(Network.requestWillBeSent(), requestSent -> {
-            System.out.println("Request ID => " + requestSent.getRequestId());
-            System.out.println("Request URL => " + requestSent.getRequest().getUrl());
-            System.out.println("Request Method => " + requestSent.getRequest().getMethod());
-            System.out.println("Request Headers => " + requestSent.getRequest().getHeaders().toString());
-            System.out.println("-------------------------------------------------");
-        });
-
-        chromeDevTools.addListener(Network.responseReceived(), responseReceieved -> {
-            System.out.println("Response Request ID => " + responseReceieved.getRequestId());
-            System.out.println("Response Url => " + responseReceieved.getResponse().getUrl());
-            System.out.println("Response Status => " + responseReceieved.getResponse().getStatus());
-            System.out.println("Response Headers => " + responseReceieved.getResponse().getHeaders().toString());
-            System.out.println("Response MIME Type => " + responseReceieved.getResponse().getMimeType().toString());
-            System.out.println("------------------------------------------------------");
-
-        });
-
+        Filter reportStatusCodes = next -> req -> {
+            HttpResponse res = next.execute(req);
+            if(req.getUri().contains("users/2")){
+                System.out.println(req.getMethod() + " " + req.getUri() + " " + res.getStatus());
+            }
+            return res;
+        };
+        NetworkInterceptor networkInterceptor = new NetworkInterceptor(chromeDriver, reportStatusCodes);
 
         return chromeDriver;
     }
